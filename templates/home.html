@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-center mb-4">Мой гастродневник</h1>
+<a href="{% url 'add_entry' %}" class="btn btn-success mb-4">+ Добавить запись</a>
+
+{% for entry in entries %}
+<div class="card mb-3">
+    {% if entry.photo %}
+        <img src="{{ entry.photo.url }}" class="card-img-top" style="max-height: 300px; object-fit: cover;">
+    {% endif %}
+    <div class="card-body">
+        <h5>{{ entry.dish }} — {{ entry.country }}</h5>
+        <p>{{ entry.description }}</p>
+        <small class="text-muted">{{ entry.created_at|date:"d.m.Y" }}</small>
+    </div>
+</div>
+{% empty %}
+<p class="text-center text-muted">Пока нет записей. Добавьте первую!</p>
+{% endfor %}
+{% endblock %}
