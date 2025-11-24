@@ -1,20 +1,131 @@
 {% extends "base.html" %}
-{% block content %}
-<h1 class="text-center mb-4">Мой гастродневник</h1>
-<a href="{% url 'add_entry' %}" class="btn btn-success mb-4">+ Добавить запись</a>
+{% load static %}
 
-{% for entry in entries %}
-<div class="card mb-3">
-    {% if entry.photo %}
-        <img src="{{ entry.photo.url }}" class="card-img-top" style="max-height: 300px; object-fit: cover;">
-    {% endif %}
-    <div class="card-body">
-        <h5>{{ entry.dish }} — {{ entry.country }}</h5>
-        <p>{{ entry.description }}</p>
-        <small class="text-muted">{{ entry.created_at|date:"d.m.Y" }}</small>
+{% block content %}
+
+<!-- Большой заголовок -->
+<div class="text-center mb-5 p-5 rounded-4 text-white" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+    <h1 class="display-4 fw-bold">Ты покорила {{ total_countries }} стран!</h1>
+    <p class="lead fs-3 opacity-90">Всего вкусных воспоминаний: {{ total_entries }}</p>
+</div>
+
+<!-- Фильтры -->
+<div class="d-flex justify-content-center gap-3 mb-5 flex-wrap">
+    <a href="{% url 'home' %}" class="btn btn-lg btn-outline-primary {% if not favorite and not current_country %}active{% endif %}">
+        Все записи
+    </a>
+    <a href="?favorite=1" class="btn btn-lg btn-heart {% if favorite %}active{% endif %}">
+        Избранное {% if favorite %}({{ entries|length }}){% endif %}
+    </a>
+</div>
+
+<!-- Страны -->
+<div class="mb-5">
+    <h3 class="text-center mb-4 text-primary fw-bold">Твои страны</h3>
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-4 justify-content-center">
+        {% for c in countries %}
+            <div class="col">
+                <a href="?country={{ c.country }}{% if favorite %}&favorite=1{% endif %}" class="text-decoration-none">
+                    <div class="text-center p-3 rounded-4 shadow-sm country-card {% if c.country == current_country %}ring ring-4 ring-primary ring-offset-2{% endif %}">
+                        <img src="https://flagcdn.com/84x63/{{ c.country|lower|slice:':2' }}.png"
+                             onerror="this.src='https://flagcdn.com/84x63/un.png'"
+                             class="rounded shadow-sm mb-2" width="70" height="52">
+                        <div class="fw-bold text-dark">{{ c.get_country_display }}</div>
+                        <small class="text-muted">{{ c.count }} блюдо{{ c.count|pluralize:",а,ов" }}</small>
+                    </div>
+                </a>
+            </div>
+        {% empty %}
+            <p class="text-center text-muted fs-4">Пока ни одной страны… Пора путешествовать!</p>
+        {% endfor %}
     </div>
 </div>
-{% empty %}
-<p class="text-center text-muted">Пока нет записей. Добавьте первую!</p>
-{% endfor %}
+
+<!-- Поиск + добавить -->
+<div class="card shadow-lg border-0 mb-5">
+    <div class="card-body p-4">
+        <div class="row g-3 align-items-center">
+            <div class="col-lg-8">
+                <form method="get" class="d-flex gap-2 flex-wrap">
+                    <input type="text" name="q" class="form-control form-control-lg" placeholder="Найти блюдо..." value="{{ query }}">
+                    <button class="btn btn-primary btn-lg px-5">Найти</button>
+                    {% if current_country %}<input type="hidden" name="country" value="{{ current_country }}">{% endif %}
+                    {% if favorite %}<input type="hidden" name="favorite" value="1">{% endif %}
+                </form>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <a href="{% url 'add_entry' %}" class="btn btn-success btn-lg w-100">
+                    + Новое блюдо
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Карточки блюд -->
+<div class="row g-4">
+    {% for entry in entries %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-lg border-0 rounded-4 overflow-hidden">
+            
+            {% if entry.photo %}
+                <img src="{{ entry.photo.url }}" class="card-img-top" style="height: 250px; object-fit: cover;">
+            {% else %}
+                <div class="bg-light text-center py-5 border-bottom">
+                    <i class="bi bi-image fs-1 text-muted"></i>
+                </div>
+            {% endif %}
+
+            <div class="card-body d-flex flex-column">
+
+                <!-- Название + страна + сердечко -->
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="card-title fw-bold mb-1">{{ entry.dish }}</h5>
+                        <p class="text-primary mb-0 fw-semibold">{{ entry.get_country_display }}</p>
+                    </div>
+
+                    <!-- Сердечко (работает уже сейчас!) -->
+                    <a href="{% url 'toggle_favorite' entry.pk %}" class="text-danger favorite-btn">
+                        {% if entry.is_favorite %}
+                            <i class="bi bi-heart-fill fs-3"></i>
+                        {% else %}
+                            <i class="bi bi-heart fs-3"></i>
+                        {% endif %}
+                    </a>
+                </div>
+
+                <!-- Звёздочки рейтинга -->
+                <div class="text-warning mb-3">
+                    {% for i in "12345"|make_list %}
+                        {% if forloop.counter <= entry.rating %}
+                            <i class="bi bi-star-fill fs-5"></i>
+                        {% else %}
+                            <i class="bi bi-star fs-5"></i>
+                        {% endif %}
+                    {% endfor %}
+                    <span class="ms-2 text-dark small fw-bold">{{ entry.rating }}/5</span>
+                </div>
+
+                <!-- Описание -->
+                <p class="text-muted flex-grow-1">
+                    {{ entry.description|truncatewords:25|linebreaksbr }}
+                </p>
+
+                <!-- Дата (кнопок редактирования/удаления пока нет — чтобы не было ошибок) -->
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <small class="text-muted">{{ entry.created_at|date:"d E Y" }}</small>
+                    <small class="text-muted">Редактирование скоро будет ;)</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+        <h3 class="text-muted">Тут пока пусто…</h3>
+        <a href="{% url 'add_entry' %}" class="btn btn-primary btn-lg mt-3">Добавить первое блюдо</a>
+    </div>
+    {% endfor %}
+</div>
+
 {% endblock %}

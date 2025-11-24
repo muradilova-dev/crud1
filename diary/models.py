@@ -7,7 +7,12 @@ class Entry(models.Model):
     dish = models.CharField("Блюдо", max_length=200)
     description = models.TextField("Впечатления", blank=True)
     photo = models.ImageField("Фото", upload_to='dishes/', blank=True, null=True)
+    rating = models.PositiveSmallIntegerField("Рейтинг", choices=[(i, f"{i}★") for i in range(1,6)], default=5)
+    is_favorite = models.BooleanField("В избранном", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.dish} — {self.country}"
+
+    class Meta:
+        ordering = ['-created_at']
