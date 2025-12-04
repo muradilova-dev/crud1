@@ -1,60 +1,75 @@
+# diary/views.py — ФИНАЛЬНАЯ ВЕРСИЯ (копировать и вставить полностью
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q, Count
-from .models import Entry
-from django import forms
+from django.contrib import messages
+from django.db.models import Q, Count, Avg
+from django.http import HttpResponse
+from collections import Counter
+from random import choice
+import json
 
-# Форма
-class EntryForm(forms.ModelForm):
-    class Meta:
-        model = Entry
-        fields = ['country', 'dish', 'description', 'photo', 'rating', 'is_favorite']
-        widgets = {
-            'description': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
-            'rating': forms.RadioSelect(attrs={'class': 'form-check-input'}),
-            'is_favorite': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        }
-        labels = {
-            'rating': 'Оценка',
-            'is_favorite': 'В избранное ❤️',
-        }
+from .models import Entry
+from .forms import EntryForm
+from .utils import render_to_pdf
+
 
 @login_required
 def home(request):
-    entries = Entry.objects.filter(user=request.user)
+    entries = Entry.objects.filter(user=request.user).order_by('-created_at')
 
-    # Поиск
     query = request.GET.get('q')
-    if query:
-        entries = entries.filter(Q(dish__icontains=query) | Q(description__icontains=query))
-
-    # Фильтр по стране
-    country = request.GET.get('country')
-
-    # Фильтр по избранному
+    tag_filter = request.GET.get('tag')
+    country_filter = request.GET.get('country')
     favorite = request.GET.get('favorite')
 
+    if query:
+        entries = entries.filter(
+            Q(dish__icontains=query) |
+            Q(description__icontains=query) |
+            Q(tags__icontains=query)
+        )
+    if tag_filter:
+        entries = entries.filter(tags__icontains=tag_filter)
+    if country_filter:
+        entries = entries.filter(country=country_filter)
     if favorite:
         entries = entries.filter(is_favorite=True)
-    if country:
-        entries = entries.filter(country=country)
 
-    entries = entries.order_by('-created_at')
-
-    # Статистика и страны
-    countries = Entry.objects.filter(user=request.user).values('country').annotate(count=Count('id')).order_by('country')
-    total_countries = countries.count()
+    # Статистика
+    total_countries = Entry.objects.filter(user=request.user).values('country').distinct().count()
     total_entries = Entry.objects.filter(user=request.user).count()
+    avg_rating = Entry.objects.filter(user=request.user).aggregate(Avg('rating'))['rating__avg'] or 0
 
-    return render(request, 'home.html', {
+    # Топ тегов
+    all_tags = []
+    for e in Entry.objects.filter(user=request.user):
+        all_tags.extend(e.tag_list())
+    top_tags = dict(Counter(all_tags).most_common(8))
+
+    # Случайное блюдо
+    random_entry = None
+    if total_entries > 0:
+        random_entry = choice(list(Entry.objects.filter(user=request.user)))
+
+    # Страны для блока
+    countries = Entry.objects.filter(user=request.user).values('country').annotate(count=Count('country')).order_by('-count')
+
+    context = {
         'entries': entries,
-        'countries': countries,
-        'current_country': country,
-        'query': query or '',
-        'favorite': favorite,
         'total_countries': total_countries,
         'total_entries': total_entries,
-    })
+        'avg_rating': round(avg_rating, 1),
+        'countries': countries,
+        'top_tags': top_tags,
+        'random_entry': random_entry,
+        'query': query or '',
+        'current_tag': tag_filter,
+        'current_country': country_filter,
+        'favorite': bool(favorite),
+    }
+    return render(request, 'home.html', context)
+
 
 @login_required
 def add_entry(request):
@@ -64,14 +79,36 @@ def add_entry(request):
             entry = form.save(commit=False)
             entry.user = request.user
             entry.save()
+            messages.success(request, 'Блюдо успешно добавлено!')
             return redirect('home')
     else:
         form = EntryForm()
-    return render(request, 'form.html', {'form': form, 'title': 'Новая запись'})
+    return render(request, 'add_entry.html', {'form': form})
+
+
+@login_required
+def edit_entry(request, pk):
+    entry = get_object_or_404(Entry, pk=pk, user=request.user)
+    if request.method == 'POST':
+        form = EntryForm(request.POST, request.FILES, instance=entry)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Изменения сохранены!')
+            return redirect('home')
+    else:
+        form = EntryForm(instance=entry)
+    return render(request, 'add_entry.html', {'form': form})
+
 
 @login_required
 def toggle_favorite(request, pk):
     entry = get_object_or_404(Entry, pk=pk, user=request.user)
     entry.is_favorite = not entry.is_favorite
     entry.save()
-    return redirect('home')
+    return redirect(request.META.get('HTTP_REFERER', 'home'))
+
+
+@login_required
+def export_pdf(request, pk):
+    entry = get_object_or_404(Entry, pk=pk, user=request.user)
+    return render_to_pdf('pdf_template.html', {'entry': entry, 'request': request})

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style type="text/css">
+        @page {
+            size: A4;
+            margin: 2cm;
+            @frame footer {
+                -pdf-frame-content: footerBlock;
+                bottom: 1cm;
+                margin-left: 1cm;
+                margin-right: 1cm;
+                height: 1cm;
+            }
+        }
+        body {
+            font-family: DejaVu Sans, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #667eea;
+            font-size: 42px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .country {
+            text-align: center;
+            font-size: 28px;
+            color: #764ba2;
+            margin: 20px 0;
+        }
+        .rating {
+            text-align: center;
+            font-size: 50px;
+            color: #ffc107;
+        }
+        .photo {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .photo img {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .tags {
+            text-align: center;
+            margin: 25px 0;
+        }
+        .tag {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            margin: 5px;
+            font-size: 16px;
+        }
+        .description {
+            font-size: 18px;
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 30px 0;
+            border-left: 5px solid #667eea;
+        }
+        .footer {
+            text-align: center;
+            color: #999;
+            margin-top: 50px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% if entry.photo %}
+            <div class="photo">
+                <img src="{{ request.scheme }}://{{ request.get_host }}{{ entry.photo.url }}" />
+            </div>
+        {% endif %}
+
+        <h1>{{ entry.dish }}</h1>
+        <div class="country">{{ entry.get_country_display }}</div>
+
+        <div class="rating">
+            {% for i in "12345"|make_list %}
+                {% if forloop.counter <= entry.rating %}★{% else %}☆{% endif %}
+            {% endfor %} {{ entry.rating }}/5
+        </div>
+
+        {% if entry.tags %}
+        <div class="tags">
+            {% for tag in entry.tag_list %}
+                <span class="tag">#{{ tag }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="description">
+            {{ entry.description|linebreaks }}
+        </div>
+
+        <div class="footer">
+            Записано {{ entry.created_at|date:"d F Y" }} • Мой Кулинарный Дневник
+        </div>
+    </div>
+
+    <div id="footerBlock">
+        <pdf:pagenumber> Страница <pdf:pagenumber>
+    </div>
+</body>
+</html>

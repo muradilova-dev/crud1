@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-body p-5">
+
+                    <h2 class="text-center mb-5 fw-bold text-primary">
+                        {% if form.instance.pk %}Редактировать блюдо{% else %}Новое вкусное воспоминание{% endif %}
+                    </h2>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <!-- Название блюда -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Название блюда <span class="text-danger">*</span></label>
+                            {{ form.dish|add_class:"form-control form-control-lg"|attr:"required" }}
+                        </div>
+
+                        <!-- Страна + Оценка -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Страна <span class="text-danger">*</span></label>
+                                {{ form.country|add_class:"form-select form-select-lg"|attr:"required" }}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Оценка <span class="text-danger">*</span></label>
+                                
+                                <div class="star-rating d-flex flex-row-reverse justify-content-end gap-3 mt-2">
+                                    {% for value, text in form.rating.field.choices %}
+                                        <input type="radio"
+                                               name="rating"
+                                               value="{{ value }}"
+                                               id="rating-{{ value }}"
+                                               {% if form.rating.value == value %}checked{% endif %}
+                                               required>
+                                        <label for="rating-{{ value }}" class="star-label">★</label>
+                                    {% endfor %}
+                                </div>
+
+                                {% if form.rating.errors %}
+                                    <div class="text-danger small mt-2">Пожалуйста, поставь оценку!</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Впечатления -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Впечатления</label>
+                            {{ form.description|add_class:"form-control"|attr:"rows:6"|attr:"placeholder:Расскажи, где пробовала, с кем, почему запомнилось..." }}
+                        </div>
+
+                        <!-- Теги -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Теги (через запятую)</label>
+                            {{ form.tags|add_class:"form-control form-control-lg"|attr:"placeholder:острые, морепродукты, уличная еда" }}
+                            <div class="form-text">Например: острые, дешево, быстро</div>
+                        </div>
+
+                        <!-- Фото -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Фото блюда</label>
+                            {{ form.photo|add_class:"form-control form-control-lg" }}
+                            {% if form.instance.photo %}
+                                <div class="mt-3">
+                                    <img src="{{ form.instance.photo.url }}" class="img-thumbnail" style="max-height: 250px; border-radius: 12px;">
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Кнопки -->
+                        <div class="d-grid gap-3 d-md-flex justify-content-md-end mt-5">
+                            <a href="{% url 'home' %}" class="btn btn-outline-secondary btn-lg">Отмена</a>
+                            <button type="submit" class="btn btn-success btn-lg px-5">
+                                {% if form.instance.pk %}Сохранить изменения{% else %}Добавить в дневник{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .star-rating {
+        unicode-bidi: bidi-override;
+        direction: rtl;
+    }
+    .star-rating input {
+        display: none;
+    }
+    .star-rating label {
+        font-size: 3.5rem;
+        color: #ddd;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .star-rating label:hover,
+    .star-rating label:hover ~ label,
+    .star-rating input:checked ~ label {
+        color: #ffc107 !important;
+    }
+</style>
+{% endblock %}

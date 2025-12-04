@@ -3,15 +3,28 @@
 
 {% block content %}
 
-<!-- Большой заголовок -->
-<div class="text-center mb-5 p-5 rounded-4 text-white" style="background: linear-gradient(135deg, #667eea, #764ba2);">
-    <h1 class="display-4 fw-bold">Ты покорила {{ total_countries }} стран!</h1>
-    <p class="lead fs-3 opacity-90">Всего вкусных воспоминаний: {{ total_entries }}</p>
+<!-- Переключатель тёмной темы -->
+<div class="form-check form-switch position-fixed top-0 end-0 mt-3 me-4" style="z-index: 1000;">
+    <input class="form-check-input fs-4" type="checkbox" id="darkSwitch">
+    <label class="form-check-label text-white fw-bold" for="darkSwitch">Тёмная</label>
 </div>
 
-<!-- Фильтры -->
-<div class="d-flex justify-content-center gap-3 mb-5 flex-wrap">
-    <a href="{% url 'home' %}" class="btn btn-lg btn-outline-primary {% if not favorite and not current_country %}active{% endif %}">
+<!-- Большой заголовок + статистика -->
+<div class="text-center mb-5 p-5 rounded-4 text-white" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+    <h1 class="display-4 fw-bold">Ты покорила {{ total_countries }} стран!</h1>
+    <p class="lead fs-3 opacity-90">Всего воспоминаний: {{ total_entries }} • Средний рейтинг: {{ avg_rating|floatformat:1 }}/5</p>
+    
+    {% if random_entry %}
+    <div class="mt-4 p-3 bg-white bg-opacity-20 rounded-4 d-inline-block">
+        <strong>Случайное блюдо дня:</strong> 
+        <a href="#" class="text-white text-decoration-underline fs-4">{{ random_entry.dish }} {{ random_entry.get_country_display }}</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Фильтры: Все / Избранное -->
+<div class="d-flex justify-content-center gap-3 mb-4 flex-wrap">
+    <a href="{% url 'home' %}" class="btn btn-lg btn-outline-primary {% if not favorite and not current_country and not current_tag %}active{% endif %}">
         Все записи
     </a>
     <a href="?favorite=1" class="btn btn-lg btn-heart {% if favorite %}active{% endif %}">
@@ -19,13 +32,28 @@
     </a>
 </div>
 
+<!-- Теги (если есть) -->
+{% if top_tags %}
+<div class="text-center mb-5">
+    <strong class="text-muted me-3">Твои теги:</strong>
+    {% for tag, count in top_tags.items %}
+        <a href="?tag={{ tag|urlencode }}" class="badge bg-primary text-white fs-6 py-2 px-4 m-1 text-decoration-none">
+            #{{ tag }} ({{ count }})
+        </a>
+    {% endfor %}
+    {% if current_tag %}
+        <a href="." class="badge bg-secondary text-white">× сброс</a>
+    {% endif %}
+</div>
+{% endif %}
+
 <!-- Страны -->
 <div class="mb-5">
     <h3 class="text-center mb-4 text-primary fw-bold">Твои страны</h3>
     <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-4 justify-content-center">
         {% for c in countries %}
             <div class="col">
-                <a href="?country={{ c.country }}{% if favorite %}&favorite=1{% endif %}" class="text-decoration-none">
+                <a href="?country={{ c.country }}{% if favorite %}&favorite=1{% endif %}{% if current_tag %}&tag={{ current_tag }}{% endif %}" class="text-decoration-none">
                     <div class="text-center p-3 rounded-4 shadow-sm country-card {% if c.country == current_country %}ring ring-4 ring-primary ring-offset-2{% endif %}">
                         <img src="https://flagcdn.com/84x63/{{ c.country|lower|slice:':2' }}.png"
                              onerror="this.src='https://flagcdn.com/84x63/un.png'"
@@ -47,10 +75,11 @@
         <div class="row g-3 align-items-center">
             <div class="col-lg-8">
                 <form method="get" class="d-flex gap-2 flex-wrap">
-                    <input type="text" name="q" class="form-control form-control-lg" placeholder="Найти блюдо..." value="{{ query }}">
+                    <input type="text" name="q" class="form-control form-control-lg" placeholder="Найти блюдо, тег или страну..." value="{{ query }}">
                     <button class="btn btn-primary btn-lg px-5">Найти</button>
                     {% if current_country %}<input type="hidden" name="country" value="{{ current_country }}">{% endif %}
                     {% if favorite %}<input type="hidden" name="favorite" value="1">{% endif %}
+                    {% if current_tag %}<input type="hidden" name="tag" value="{{ current_tag }}">{% endif %}
                 </form>
             </div>
             <div class="col-lg-4 text-lg-end">
@@ -67,7 +96,7 @@
     {% for entry in entries %}
     <div class="col-md-6 col-lg-4">
         <div class="card h-100 shadow-lg border-0 rounded-4 overflow-hidden">
-            
+
             {% if entry.photo %}
                 <img src="{{ entry.photo.url }}" class="card-img-top" style="height: 250px; object-fit: cover;">
             {% else %}
@@ -84,8 +113,6 @@
                         <h5 class="card-title fw-bold mb-1">{{ entry.dish }}</h5>
                         <p class="text-primary mb-0 fw-semibold">{{ entry.get_country_display }}</p>
                     </div>
-
-                    <!-- Сердечко (работает уже сейчас!) -->
                     <a href="{% url 'toggle_favorite' entry.pk %}" class="text-danger favorite-btn">
                         {% if entry.is_favorite %}
                             <i class="bi bi-heart-fill fs-3"></i>
@@ -95,7 +122,7 @@
                     </a>
                 </div>
 
-                <!-- Звёздочки рейтинга -->
+                <!-- Рейтинг -->
                 <div class="text-warning mb-3">
                     {% for i in "12345"|make_list %}
                         {% if forloop.counter <= entry.rating %}
@@ -107,16 +134,31 @@
                     <span class="ms-2 text-dark small fw-bold">{{ entry.rating }}/5</span>
                 </div>
 
+                <!-- Теги -->
+                {% if entry.tags %}
+                <div class="mb-3">
+                    {% for tag in entry.tag_list %}
+                        <a href="?tag={{ tag|urlencode }}" class="badge bg-secondary text-white me-1 mb-1 text-decoration-none">
+                            #{{ tag }}
+                        </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
                 <!-- Описание -->
-                <p class="text-muted flex-grow-1">
+                <p class="text-muted flex-grow-1 small">
                     {{ entry.description|truncatewords:25|linebreaksbr }}
                 </p>
 
-                <!-- Дата (кнопок редактирования/удаления пока нет — чтобы не было ошибок) -->
-                <div class="d-flex justify-content-between align-items-center mt-3">
+                <!-- Дата + PDF -->
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
                     <small class="text-muted">{{ entry.created_at|date:"d E Y" }}</small>
-                    <small class="text-muted">Редактирование скоро будет ;)</small>
+                    <a href="{% url 'export_pdf' entry.pk %}" 
+                       class="btn btn-sm btn-success d-flex align-items-center gap-1">
+                        <i class="bi bi-file-earmark-arrow-down"></i> PDF
+                    </a>
                 </div>
+
             </div>
         </div>
     </div>
@@ -127,5 +169,23 @@
     </div>
     {% endfor %}
 </div>
+
+<!-- Тёмная тема скрипт (вставь перед </body> в base.html, если ещё нет) -->
+<script>
+    const toggle = document.getElementById('darkSwitch');
+    if (localStorage.getItem('theme') === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        toggle.checked = true;
+    }
+    toggle.addEventListener('change', () => {
+        if (toggle.checked) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
+        }
+    });
+</script>
 
 {% endblock %}
