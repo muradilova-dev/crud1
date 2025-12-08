@@ -1,3 +1,8 @@
 from django.contrib import admin
+from .models import Entry
 
-# Register your models here.
+@admin.register(Entry)
+class EntryAdmin(admin.ModelAdmin):
+    list_display = ('dish', 'user', 'country', 'rating', 'created_at')
+    list_filter = ('country', 'rating', 'created_at')
+    search_fields = ('dish', 'description')

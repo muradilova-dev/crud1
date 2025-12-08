@@ -6,43 +6,32 @@
         @page {
             size: A4;
             margin: 2cm;
-            @frame footer {
-                -pdf-frame-content: footerBlock;
-                bottom: 1cm;
-                margin-left: 1cm;
-                margin-right: 1cm;
-                height: 1cm;
-            }
         }
         body {
-            font-family: DejaVu Sans, Arial, sans-serif;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
             line-height: 1.6;
             color: #333;
+            margin: 20px;
         }
         .container {
             max-width: 800px;
             margin: 0 auto;
-            padding: 30px;
+            padding: 40px;
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 1px solid #eee;
         }
         h1 {
-            color: #667eea;
-            font-size: 42px;
+            font-size: 40px;
             text-align: center;
+            color: #5e35b1;
             margin-bottom: 10px;
         }
         .country {
             text-align: center;
-            font-size: 28px;
-            color: #764ba2;
-            margin: 20px 0;
-        }
-        .rating {
-            text-align: center;
-            font-size: 50px;
-            color: #ffc107;
+            font-size: 26px;
+            color: #7c4dff;
+            margin-bottom: 30px;
         }
         .photo {
             text-align: center;
@@ -50,54 +39,58 @@
         }
         .photo img {
             max-width: 100%;
-            max-height: 500px;
-            border-radius: 15px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            max-height: 400px;
+            border-radius: 10px;
+        }
+        .rating {
+            text-align: center;
+            font-size: 44px;
+            color: #ffc107;
+            margin: 30px 0;
         }
         .tags {
             text-align: center;
-            margin: 25px 0;
+            margin: 30px 0;
         }
         .tag {
             display: inline-block;
             background: #667eea;
             color: white;
-            padding: 10px 20px;
-            border-radius: 50px;
-            margin: 5px;
-            font-size: 16px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            margin: 4px;
         }
         .description {
             font-size: 18px;
-            background: #f8f9fa;
             padding: 25px;
-            border-radius: 15px;
+            border-left: 4px solid #667eea;
+            background: #f9f9f9;
             margin: 30px 0;
-            border-left: 5px solid #667eea;
         }
         .footer {
             text-align: center;
-            color: #999;
             margin-top: 50px;
+            color: #888;
             font-size: 14px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        {% if entry.photo %}
-            <div class="photo">
-                <img src="{{ request.scheme }}://{{ request.get_host }}{{ entry.photo.url }}" />
-            </div>
-        {% endif %}
-
         <h1>{{ entry.dish }}</h1>
         <div class="country">{{ entry.get_country_display }}</div>
+
+        {% if entry.photo %}
+        <div class="photo">
+            <img src="{{ entry.photo.url }}" />
+        </div>
+        {% endif %}
 
         <div class="rating">
             {% for i in "12345"|make_list %}
                 {% if forloop.counter <= entry.rating %}★{% else %}☆{% endif %}
-            {% endfor %} {{ entry.rating }}/5
+            {% endfor %}
+            {{ entry.rating }}/5
         </div>
 
         {% if entry.tags %}
@@ -109,16 +102,13 @@
         {% endif %}
 
         <div class="description">
+            <strong>Описание:</strong><br>
             {{ entry.description|linebreaks }}
         </div>
 
         <div class="footer">
             Записано {{ entry.created_at|date:"d F Y" }} • Мой Кулинарный Дневник
         </div>
-    </div>
-
-    <div id="footerBlock">
-        <pdf:pagenumber> Страница <pdf:pagenumber>
     </div>
 </body>
 </html>

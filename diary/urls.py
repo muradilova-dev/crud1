@@ -7,6 +7,7 @@ urlpatterns = [
     path('toggle-favorite/<int:pk>/', views.toggle_favorite, name='toggle_favorite'),
     path('entry/<int:pk>/pdf/', views.export_pdf, name='export_pdf'),
     path('edit/<int:pk>/', views.edit_entry, name='edit_entry'),
+    path('delete/<int:pk>/', views.delete_entry, name='delete_entry'),
 ]
 
 

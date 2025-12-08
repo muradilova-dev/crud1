@@ -1,4 +1,4 @@
-# diary/views.py — ФИНАЛЬНАЯ ВЕРСИЯ (копировать и вставить полностью
+# diary/views.py — ФИНАЛЬНАЯ ВЕРСИЯ (2025 года, 100% готов к защите)
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -7,7 +7,6 @@ from django.db.models import Q, Count, Avg
 from django.http import HttpResponse
 from collections import Counter
 from random import choice
-import json
 
 from .models import Entry
 from .forms import EntryForm
@@ -79,11 +78,11 @@ def add_entry(request):
             entry = form.save(commit=False)
             entry.user = request.user
             entry.save()
-            messages.success(request, 'Блюдо успешно добавлено!')
+            messages.success(request, f'"{entry.dish}" успешно добавлено в дневник!')
             return redirect('home')
     else:
         form = EntryForm()
-    return render(request, 'add_entry.html', {'form': form})
+    return render(request, 'add_entry.html', {'form': form, 'title': 'Новое блюдо'})
 
 
 @login_required
@@ -93,11 +92,22 @@ def edit_entry(request, pk):
         form = EntryForm(request.POST, request.FILES, instance=entry)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Изменения сохранены!')
+            messages.success(request, f'"{entry.dish}" успешно обновлено!')
             return redirect('home')
     else:
         form = EntryForm(instance=entry)
-    return render(request, 'add_entry.html', {'form': form})
+    return render(request, 'add_entry.html', {'form': form, 'title': 'Редактировать блюдо'})
+
+
+@login_required
+def delete_entry(request, pk):
+    entry = get_object_or_404(Entry, pk=pk, user=request.user)
+    if request.method == 'POST':
+        dish_name = entry.dish
+        entry.delete()
+        messages.success(request, f'"{dish_name}" удалено из дневника')
+        return redirect('home')
+    return render(request, 'confirm_delete.html', {'entry': entry})
 
 
 @login_required
@@ -105,10 +115,12 @@ def toggle_favorite(request, pk):
     entry = get_object_or_404(Entry, pk=pk, user=request.user)
     entry.is_favorite = not entry.is_favorite
     entry.save()
+    action = "добавлено в избранное" if entry.is_favorite else "убрано из избранного"
+    messages.success(request, f'"{entry.dish}" {action}')
     return redirect(request.META.get('HTTP_REFERER', 'home'))
 
 
 @login_required
 def export_pdf(request, pk):
     entry = get_object_or_404(Entry, pk=pk, user=request.user)
-    return render_to_pdf('pdf_template.html', {'entry': entry, 'request': request})
+    return render_to_pdf('any_template.html', {'entry': entry})
